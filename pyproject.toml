@@ -1,0 +1,14 @@
+[project]
+name = "vlm-demo"
+version = "0.1.0"
+description = "Vision-Language Model Demo with Ollama and LlamaIndex"
+readme = "README.md"
+requires-python = ">=3.9,<4.0"
+dependencies = [
+    "opencv-python>=4.8.0",
+    "flask>=2.0.0",
+    "requests>=2.32.5",
+    "ollama>=0.5.3",
+    "pymodbus>=3.8.6",
+    "pyserial>=3.5",
+]
