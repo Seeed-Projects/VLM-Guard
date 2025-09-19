@@ -21,6 +21,9 @@ import logging
 # 导入数据可视化接收器
 from models.data_visualizer_receiver import DataVisualizerReceiver
 
+# 导入数据库相关模块
+from models.database import AnalysisRecord, ChatRecord, get_db
+
 # 设置日志
 logging.basicConfig(
     level=logging.INFO,
@@ -353,12 +356,32 @@ def chat():
         data = request.json
         user_message = data.get('message', '')
         
-        # 读取data/data.md文件作为上下文
+        # 从数据库获取最近的20条分析记录作为上下文
         context = ""
-        context_file = './data/data.md'
-        if os.path.exists(context_file):
-            with open(context_file, 'r', encoding='utf-8') as f:
-                context = f.read()
+        try:
+            # 获取数据库会话
+            db_gen = get_db()
+            db = next(db_gen)
+            
+            # 查询最近的20条记录
+            records = db.query(AnalysisRecord).order_by(AnalysisRecord.date.desc()).limit(20).all()
+            
+            # 构造上下文字符串
+            for record in reversed(records):  # 按时间顺序排列
+                context += f"""
+                **time**: {record.date.strftime('%Y-%m-%d %H:%M:%S')}
+                **danger**: {'yes' if record.danger else 'no'}
+                **description**: {record.description}
+                """
+            
+            # 关闭数据库会话
+            try:
+                next(db_gen)
+            except StopIteration:
+                pass
+                
+        except Exception as e:
+            logger.error(f"从数据库获取历史记录时出错: {e}")
         
         # 如果没有历史数据，提供一个默认的提示
         if not context:
@@ -394,6 +417,34 @@ Please provide an accurate and helpful answer based on the historical data. If t
         else:
             response_text = f"Error: vLLM request failed with status {response.status_code}"
         
+        # 将对话记录保存到数据库
+        try:
+            # 获取数据库会话
+            db_gen = get_db()
+            db = next(db_gen)
+            
+            # 创建新的聊天记录
+            chat_record = ChatRecord(
+                user_message=user_message,
+                assistant_response=response_text
+            )
+            
+            # 添加到数据库
+            db.add(chat_record)
+            db.commit()
+            db.refresh(chat_record)
+            
+            logger.info(f"聊天记录已保存到数据库，ID: {chat_record.id}")
+            
+            # 关闭数据库会话
+            try:
+                next(db_gen)
+            except StopIteration:
+                pass
+                
+        except Exception as e:
+            logger.error(f"保存聊天记录到数据库时出错: {e}")
+        
         return jsonify({
             'response': response_text,
             'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
@@ -403,29 +454,13 @@ Please provide an accurate and helpful answer based on the historical data. If t
         return jsonify({'error': str(e)}), 500
 
 
-def clean_data_md():
-    """定期清理data.md文件"""
-    while True:
-        try:
-            time.sleep(300)  # 等待5分钟 (300秒)
-            if os.path.exists('./data/data.md'):
-                with open('./data/data.md', 'w', encoding='utf-8') as f:
-                    f.write("# VLM Demo Data\n\n")
-                logger.info("Cleaned data.md file")
-        except Exception as e:
-            logger.error(f"Error cleaning data.md: {e}")
-
 def start_web_ui(port=5000, host='localhost', web_port=5001, chart_port=5002):
-    """启动Web UI"""
+    """启动Web UI服务器"""
     global unified_receiver
     
-    # 创建并启动统一接收器
+    # 初始化统一接收器
     unified_receiver = UnifiedReceiver(port=port, host=host, chart_port=chart_port)
     unified_receiver.start_receiver()
-    
-    # 启动定期清理data.md的线程
-    cleaner_thread = threading.Thread(target=clean_data_md, daemon=True)
-    cleaner_thread.start()
     
     logger.info(f"Starting web server on http://localhost:{web_port}")
     logger.info("Press Ctrl+C to stop")

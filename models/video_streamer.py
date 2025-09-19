@@ -23,6 +23,9 @@ import ollama
 import requests
 from typing import Optional, Any
 
+# 导入数据库相关模块
+from .database import AnalysisRecord, get_db
+
 from .rs485_sensor_data_sender import RS485SensorDataSender
 
 # 设置日志
@@ -152,7 +155,7 @@ class VideoStreamer:
         try:
             # 将图像编码为base64字符串
             base64_image = self.encode_image_to_base64(image)
-            current_date = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            current_date = datetime.now()
             
             # 使用ollama库调用模型，仅要求描述图片内容
             prompt = "Please describe this image in detail. Focus on what people are doing, objects present, and the overall scene. Limit your description to 75 words."
@@ -185,12 +188,12 @@ class VideoStreamer:
             # 定义危险关键词模式
             danger_patterns = [
                 r'\b(knife|刀)\b',
-                r'\b(gun|fists|firearm|fist|guns|枪|武器)\b',
+                r'\b(gun|fist|fists|guns|firearm|枪|武器)\b',
                 r'\b(fight|fighting|打架|violence|暴力)\b',
-                r'\b(fire|火焰|smoke|烟雾)\b',
+                r'\b(fire|火焰|smoke|smoking|烟雾)\b',
                 r'\b(danger|危险)\b',
                 r'\b(blood|血)\b',
-                r'\b(weapon|武器)\b',
+                r'\b(weapon|weapons|武器)\b',
                 r'\b(explosion|爆炸)\b',
                 r'\b(accident|事故)\b'
             ]
@@ -204,13 +207,13 @@ class VideoStreamer:
             
             # 构造返回的JSON
             response_json = {
-                "date": current_date,
+                "date": current_date.strftime('%Y-%m-%d %H:%M:%S'),
                 "description": description,
                 "danger": is_dangerous
             }
             
-            # 将response_json以Markdown格式写入data.md文件
-            self.write_response_to_markdown(response_json)
+            # 将分析结果保存到数据库
+            self.save_analysis_to_db(current_date, description, is_dangerous)
             
             return response_json
 
@@ -218,28 +221,42 @@ class VideoStreamer:
             logger.error(f"分析图像时出错: {e}")
             return None
     
-    def write_response_to_markdown(self, response_json):
+    def save_analysis_to_db(self, date, description, danger):
         """
-        将response_json以Markdown格式写入data.md文件
+        将分析结果保存到数据库
         
         Args:
-            response_json (dict): 包含分析结果的字典
+            date: 分析时间
+            description: 分析描述
+            danger: 是否危险
         """
         try:
-            # 创建Markdown格式的内容
-            markdown_content = f"""
-            **time**: {response_json.get('date', 'N/A')}
-            **danger**: {'yes' if response_json.get('danger', False) else 'no'}
-            **description**: {response_json.get('description', 'N/A')}
-            """
+            # 获取数据库会话
+            db_gen = get_db()
+            db = next(db_gen)
             
-            # 写入文件，使用追加模式
-            with open('./data/data.md', 'a', encoding='utf-8') as f:
-                f.write(markdown_content)
+            # 创建新的分析记录
+            record = AnalysisRecord(
+                date=date,
+                description=description,
+                danger=danger
+            )
+            
+            # 添加到数据库
+            db.add(record)
+            db.commit()
+            db.refresh(record)
+            
+            logger.info(f"分析结果已保存到数据库，ID: {record.id}")
+            
+            # 关闭数据库会话
+            try:
+                next(db_gen)
+            except StopIteration:
+                pass
                 
-            logger.info("分析结果已写入data.md文件")
         except Exception as e:
-            logger.error(f"写入Markdown文件时出错: {e}")
+            logger.error(f"保存分析结果到数据库时出错: {e}")
     
     def chat_with_vllm(self, prompt):
         """
@@ -252,12 +269,32 @@ class VideoStreamer:
             str: vLLM的响应
         """
         try:
-            # 读取data/data.md文件作为历史数据上下文
+            # 从数据库获取最近的20条分析记录作为上下文
             context = ""
-            context_file = './data/data.md'
-            if os.path.exists(context_file):
-                with open(context_file, 'r', encoding='utf-8') as f:
-                    context = f.read()
+            try:
+                # 获取数据库会话
+                db_gen = get_db()
+                db = next(db_gen)
+                
+                # 查询最近的20条记录
+                records = db.query(AnalysisRecord).order_by(AnalysisRecord.date.desc()).limit(20).all()
+                
+                # 构造上下文字符串
+                for record in reversed(records):  # 按时间顺序排列
+                    context += f"""
+                    **time**: {record.date.strftime('%Y-%m-%d %H:%M:%S')}
+                    **danger**: {'yes' if record.danger else 'no'}
+                    **description**: {record.description}
+                    """
+                
+                # 关闭数据库会话
+                try:
+                    next(db_gen)
+                except StopIteration:
+                    pass
+                    
+            except Exception as e:
+                logger.error(f"从数据库获取历史记录时出错: {e}")
             
             # 如果没有历史数据，提供一个默认的提示
             if not context:
@@ -266,13 +303,13 @@ class VideoStreamer:
             # 构造一个详细的提示，指导vLLM如何使用历史数据回答问题
             full_prompt = f"""You are an intelligent security monitoring assistant. Please provide an answer based on the following historical data and the user's question.
 
-                            Historical Data:
-                            {context}
+Historical Data:
+{context}
 
-                            User Question:
-                            {prompt}
+User Question:
+{prompt}
 
-                            Please provide an accurate and helpful answer based on the historical data. If the question cannot be answered with the provided data, please state so clearly."""
+Please provide an accurate and helpful answer based on the historical data. If the question cannot be answered with the provided data, please state so clearly."""
 
             # 准备发送给vLLM的数据
             data = {

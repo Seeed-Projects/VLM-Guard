@@ -11,4 +11,5 @@ dependencies = [
     "ollama>=0.5.3",
     "pymodbus>=3.8.6",
     "pyserial>=3.5",
+    "sqlalchemy>=2.0.0",
 ]
