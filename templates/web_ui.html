@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>VLM Demo</title>
+    <title>VLM-Guard</title>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
@@ -310,6 +310,7 @@
         #latest-analysis {
             font-size: 1.1rem;
             line-height: 1.5;
+            color: #000000; /* 黑色 */
         }
         
         #video-stream {
@@ -498,7 +499,7 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1 class="main-title">VLM Demo</h1>
+            <h1 class="main-title">VLM-Guard</h1>
             <div class="status-info">
                 <div class="status" id="main-status">
                     <span id="status-text">Connecting...</span>
@@ -525,7 +526,7 @@
                 
                 <!-- 光照度传感器数据 -->
                 <div class="panel chart-panel">
-                    <h2>Light Sensor Data</h2>
+                    <h2>Light Sensor</h2>
                     <div class="panel-content">
                         <div class="chart-container">
                             <canvas id="lux-chart" width="400" height="200" style="max-width: 100%; height: auto;"></canvas>
@@ -561,18 +562,18 @@
             <div class="column">
                 <!-- 聊天 -->
                 <div class="panel chat-panel">
-                    <h2>Chat with vLLM</h2>
+                    <h2>Chat with Database</h2>
                     <div class="panel-content">
                         <div class="chat-container">
                             <div id="chat-messages" class="chat-messages">
                                 <div class="message bot-message">
-                                    <div class="message-sender">vLLM Assistant</div>
-                                    <div class="message-content">Hello! I'm the vLLM assistant. You can ask me questions about the video analysis.</div>
+                                    <div class="message-sender">Database Assistant</div>
+                                    <div class="message-content">Hello! I'm the database assistant. You can ask me questions about the video analysis.</div>
                                 </div>
                             </div>
                             <div class="chat-input-container">
                                 <div class="chat-input-wrapper">
-                                    <input type="text" id="chat-input" placeholder="Message vLLM..." />
+                                    <input type="text" id="chat-input" placeholder="Message Database..." />
                                     <button id="send-button">Send</button>
                                 </div>
                             </div>
@@ -738,7 +739,7 @@
             
             const senderDiv = document.createElement('div');
             senderDiv.className = 'message-sender';
-            senderDiv.textContent = isUser ? 'You' : 'vLLM Assistant';
+            senderDiv.textContent = isUser ? 'You' : 'Database Assistant';
             
             const contentDiv = document.createElement('div');
             contentDiv.className = 'message-content';
@@ -751,7 +752,7 @@
             chatMessages.scrollTop = chatMessages.scrollHeight;
         }
         
-        // 发送消息到vLLM
+        // 发送消息到数据库
         async function sendChatMessage() {
             const message = chatInput.value.trim();
             if (!message) return;
@@ -773,7 +774,7 @@
                     const data = await response.json();
                     addMessageToChat(data.response);
                 } else {
-                    addMessageToChat('Error: Failed to get response from vLLM');
+                    addMessageToChat('Error: Failed to get response from database');
                 }
             } catch (error) {
                 addMessageToChat('Error: ' + error.message);
