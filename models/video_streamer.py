@@ -16,6 +16,7 @@ import time
 import base64
 import json
 import os
+import re
 from datetime import datetime
 import logging
 import ollama
@@ -153,47 +154,8 @@ class VideoStreamer:
             base64_image = self.encode_image_to_base64(image)
             current_date = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             
-            # 使用ollama库调用模型
-            prompt = """
-            Analyze this image and determine if any person's actions are dangerous.
-            Provide your response in JSON format with the following structure:
-            {
-                "description": "Detailed description of the scene and any dangerous behaviors",
-                "danger": true/false
-            }
-
-            STRICT SAFETY ASSESSMENT GUIDELINES:
-
-            1. DANGEROUS BEHAVIORS (IMMEDIATELY CONSIDER AS DANGEROUS IF ANY OF THESE ARE PRESENT):
-            - Any person holding a weapon (knife, gun, stick, bat, or any object that could be used as a weapon)
-            - Any person engaged in physical violence or fighting
-            - Any person handling fire, explosives, or hazardous materials
-            - Any person in a situation that could cause immediate harm (near fire, in traffic, etc.)
-            - Any person operating machinery or vehicles in an unsafe manner
-            - Any person in a position that could lead to falls from height
-
-            2. POTENTIALLY DANGEROUS OBJECTS (TRIGGER DANGER FLAG IF BEING HELD OR USED):
-            - Knives, blades, or any sharp objects
-            - Guns, firearms, or any projectile weapons
-            - Sticks, bats, clubs, or any blunt objects that could be used as weapons
-            - Tools being used inappropriately (hammers, screwdrivers, etc.)
-            - Any object being wielded in a threatening manner
-
-            3. DANGEROUS ENVIRONMENTS (TRIGGER DANGER FLAG IF PRESENT):
-            - Fire, smoke, or signs of burning
-            - Exposed electrical equipment or wires
-            - Slippery or unstable surfaces
-            - Confined spaces with limited escape routes
-            - Any environment that poses immediate physical danger
-
-            4. SAFETY ASSESSMENT RULES:
-            - If ANY of the above dangerous behaviors, objects, or environments are detected, set "danger" to TRUE
-            - Err on the side of caution - if unsure, mark as dangerous
-            - Only set "danger" to false if absolutely no potential dangers are detected
-            - Provide a clear, detailed description of what you observe, especially any potential dangers
-
-            CRITICAL: Your response must be valid JSON only, with no additional text outside the JSON structure.
-            """
+            # 使用ollama库调用模型，仅要求描述图片内容
+            prompt = "Please describe this image in detail. Focus on what people are doing, objects present, and the overall scene. Limit your description to 75 words."
             
             logger.info(f"向Ollama模型发送请求: {self.model_name}")
             response = ollama.chat(
@@ -210,42 +172,47 @@ class VideoStreamer:
                 }
             )
             
-            # 解析响应
-            response_text = response['message']['content']
-            logger.info(f"原始响应: {response_text}")
+            # 获取模型的描述
+            description = response['message']['content']
+            logger.info(f"原始响应: {description}")
             
-            # 尝试解析JSON响应
-            try:
-                # 提取JSON部分（可能响应中有额外文本）
-                json_start = response_text.find('{')
-                json_end = response_text.rfind('}') + 1
-                if json_start >= 0 and json_end > json_start:
-                    json_str = response_text[json_start:json_end]
-                    result = json.loads(json_str)
-                    
-                    # 构造返回的JSON
-                    danger_status = result.get("danger", False)
-                    description = result.get("description", "")
-                    
-                    response_json = {
-                        "date": current_date,
-                        "description": description,
-                        "danger": danger_status
-                    }
-                    
-                    # 将response_json以Markdown格式写入data.md文件
-                    self.write_response_to_markdown(response_json)
-                    
-                    return response_json
-                else:
-                    # 如果没有找到JSON，记录错误并返回None
-                    logger.error("无法从模型响应中提取JSON格式数据")
-                    return None
-                    
-            except json.JSONDecodeError:
-                # JSON解析失败，记录错误并返回None
-                logger.error("无法解析模型响应为JSON格式")
-                return None
+            # 限制描述在75个单词内
+            words = description.split()
+            if len(words) > 75:
+                description = ' '.join(words[:75])
+            
+            # 使用正则表达式判断是否危险
+            # 定义危险关键词模式
+            danger_patterns = [
+                r'\b(knife|刀)\b',
+                r'\b(gun|fists|firearm|fist|guns|枪|武器)\b',
+                r'\b(fight|fighting|打架|violence|暴力)\b',
+                r'\b(fire|火焰|smoke|烟雾)\b',
+                r'\b(danger|危险)\b',
+                r'\b(blood|血)\b',
+                r'\b(weapon|武器)\b',
+                r'\b(explosion|爆炸)\b',
+                r'\b(accident|事故)\b'
+            ]
+            
+            # 检查描述中是否包含危险关键词
+            is_dangerous = False
+            for pattern in danger_patterns:
+                if re.search(pattern, description, re.IGNORECASE):
+                    is_dangerous = True
+                    break
+            
+            # 构造返回的JSON
+            response_json = {
+                "date": current_date,
+                "description": description,
+                "danger": is_dangerous
+            }
+            
+            # 将response_json以Markdown格式写入data.md文件
+            self.write_response_to_markdown(response_json)
+            
+            return response_json
 
         except Exception as e:
             logger.error(f"分析图像时出错: {e}")
