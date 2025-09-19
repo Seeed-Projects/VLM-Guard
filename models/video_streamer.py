@@ -259,25 +259,28 @@ class VideoStreamer:
                 with open(context_file, 'r', encoding='utf-8') as f:
                     context = f.read()
             
-            # 构造一个详细的提示，指导vLLM如何使用历史数据回答问题
-                full_prompt = f"""You are an intelligent security monitoring assistant. Please provide an answer based on the following historical data and the user's question.
-
-                                Historical Data:
-                                {context}
-
-                                User Question:
-                                {prompt}
-
-                                Please provide an accurate and helpful answer based on the historical data:"""
-
+            # 如果没有历史数据，提供一个默认的提示
+            if not context:
+                context = "No previous analysis data available."
             
-                # 准备发送给vLLM的数据
-                data = {
-                    "model": "gemma3:4b",  # 使用正确的模型名称
-                    "prompt": full_prompt,
-                    "max_tokens": 800,  # 增加token数量以获得更详细的回答
-                    "temperature": 0
-                }
+            # 构造一个详细的提示，指导vLLM如何使用历史数据回答问题
+            full_prompt = f"""You are an intelligent security monitoring assistant. Please provide an answer based on the following historical data and the user's question.
+
+                            Historical Data:
+                            {context}
+
+                            User Question:
+                            {prompt}
+
+                            Please provide an accurate and helpful answer based on the historical data. If the question cannot be answered with the provided data, please state so clearly."""
+
+            # 准备发送给vLLM的数据
+            data = {
+                "model": "gemma3:4b",  # 使用正确的模型名称
+                "prompt": full_prompt,
+                "max_tokens": 800,  # 增加token数量以获得更详细的回答
+                "temperature": 0
+            }
             
             # 发送请求到vLLM
             logger.info(f"向vLLM发送请求，基于历史数据回答问题: {prompt}")

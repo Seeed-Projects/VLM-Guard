@@ -353,18 +353,35 @@ def chat():
         data = request.json
         user_message = data.get('message', '')
         
-        # 读取data.md文件作为上下文
+        # 读取data/data.md文件作为上下文
         context = ""
-        if os.path.exists('data.md'):
-            with open('data.md', 'r', encoding='utf-8') as f:
+        context_file = './data/data.md'
+        if os.path.exists(context_file):
+            with open(context_file, 'r', encoding='utf-8') as f:
                 context = f.read()
         
+        # 如果没有历史数据，提供一个默认的提示
+        if not context:
+            context = "No previous analysis data available."
+        
+        # 构造一个详细的提示，指导vLLM如何使用历史数据回答问题
+        full_prompt = f"""You are an intelligent security monitoring assistant. Please provide an answer based on the following historical data and the user's question.
+
+Historical Data:
+{context}
+
+User Question:
+{user_message}
+
+Please provide an accurate and helpful answer based on the historical data. If the question cannot be answered with the provided data, please state so clearly."""
+
         # 准备发送给vLLM的数据
         vllm_data = {
             "model": "gemma3:4b",  # 根据实际模型名称调整
-            "prompt": f"Context:\n{context}\n\nQuestion:\n{user_message}\n\nAnswer:",
+            "prompt": full_prompt,
+            "stream": False,
             "max_tokens": 500,
-            "temperature": 0.7
+            "temperature": 0
         }
         
         # 发送请求到vLLM
@@ -372,18 +389,8 @@ def chat():
         response = requests.post("http://localhost:11434/api/generate", json=vllm_data, timeout=30)
         
         if response.status_code == 200:
-            # Ollama返回的是流式响应，需要处理所有响应片段
-            response_lines = response.text.strip().split('\n')
-            response_text = ""
-            for line in response_lines:
-                try:
-                    line_data = json.loads(line)
-                    if 'response' in line_data:
-                        response_text += line_data['response']
-                except json.JSONDecodeError:
-                    # 如果不是JSON格式，跳过该行
-                    continue
-            response_text = response_text.strip()
+            response_data = response.json()
+            response_text = response_data.get("response", "").strip()
         else:
             response_text = f"Error: vLLM request failed with status {response.status_code}"
         
