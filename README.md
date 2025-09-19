@@ -46,28 +46,29 @@ vlm_demo/
 1. **Python 3.9+**
 2. **Ollama** with required models
 3. **Required Python packages** (see pyproject.toml)
+4. **Need Jetson or GPU have ARM>8GB**
 
 ## Installation
 
 1. Clone or download this repository
 
+```bash
+git clone https://github.com/Seeed-Projects/VLM-Guard.git
+```
+
 2. Create a virtual environment and activate it:
-   ```bash
-   python -m venv .venv
-   source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-   ```
+   
+```bash
+cd VLM-Guard
+pip install uv 
+```
 
 3. Install required dependencies:
-   ```bash
-   pip install -e .
-   ```
 
-4. Install and start Ollama:
-   ```bash
-   # Install Ollama from https://ollama.com/
-   ollama pull gemma3:4b
-   ollama serve
-   ```
+```bash
+uv sync 
+source .venv/bin/activate
+```
 
 ## Model Requirements
 
@@ -76,7 +77,9 @@ The system requires the following models to be available in Ollama:
 
 To install this model:
 ```bash
+# Install Ollama from https://ollama.com/
 ollama pull gemma3:4b
+ollama serve
 ```
 
 ## Quick Start
