@@ -2,19 +2,6 @@
 
 This system demonstrates real-time video streaming with dangerous action detection using Vision-Language Models, and RS485 device control.
 
-## Key Features
-
-- **Real-time Video Streaming**: Captures video from camera or video files and streams in real-time
-- **Dangerous Action Detection**: Uses vision-language models to analyze video frames and detect dangerous behaviors
-- **Intelligent Analysis**: Integrates with vLLM to provide deeper analysis and safety recommendations
-- **Web-based Interface**: Displays video stream, analysis results, and vLLM responses in a unified web interface
-- **Interactive Chat**: Allows users to interact with vLLM through a chat interface using historical analysis data
-- **Analysis History**: Tracks and displays historical analysis results in a database
-- **Visual Indicators**: Clear visual indicators for dangerous vs safe actions
-- **RS485 Device Support**: Read data from and control RS485 devices (light sensors and light controllers)
-- **Automatic Light Control**: Automatically controls RS485 lights based on sensor data and vLLM analysis results
-- **Modular Architecture**: Well-structured codebase with clear separation of concerns
-
 ## Project Structure
 
 ```
@@ -292,6 +279,10 @@ The vLLM-based control takes precedence over sensor-based control when both cond
 4. **RS485 Communication**:
    - Optimize polling intervals for sensor readings
    - Use appropriate baud rates for your hardware
+
+## Result
+
+![](./img/VLM-Guard.png)
 
 ## Contributing
 
