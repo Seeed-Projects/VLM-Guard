@@ -485,6 +485,12 @@
             font-size: 1.15rem;
         }
         
+        .threat-text {
+            color: #ffeb3b;
+            font-weight: bold;
+            font-size: 1.15rem;
+        }
+        
         .danger-indicator.danger {
             background-color: #f44336;
             color: white;
@@ -493,6 +499,11 @@
         .danger-indicator.safe {
             background-color: #4caf50;
             color: white;
+        }
+        
+        .danger-indicator.threat {
+            background-color: #ffeb3b;
+            color: black;
         }
     </style>
 </head>
@@ -720,13 +731,17 @@
         }
         
         // 更新危险指示器
-        function updateDangerIndicator(isDangerous) {
+        function updateDangerIndicator(status) {
             const dangerIndicator = document.getElementById('danger-indicator');
-            if (isDangerous === true) {
+            if (status === 'danger') {
                 dangerIndicator.textContent = 'DANGER';
                 dangerIndicator.className = 'danger-indicator danger';
                 dangerIndicator.style.display = 'inline-block';
-            } else if (isDangerous === false) {
+            } else if (status === 'threat') {
+                dangerIndicator.textContent = 'THREAT';
+                dangerIndicator.className = 'danger-indicator threat';
+                dangerIndicator.style.display = 'inline-block';
+            } else if (status === 'safe') {
                 dangerIndicator.textContent = 'SAFE';
                 dangerIndicator.className = 'danger-indicator safe';
                 dangerIndicator.style.display = 'inline-block';
@@ -801,73 +816,116 @@
         
         // 获取最新分析结果并更新页面
         function loadLatestAnalysis() {
-            fetch('/latest_description')
-                .then(response => response.json())
-                .then(data => {
-                    const analysisDiv = document.getElementById('latest-analysis');
-                    const timestampDiv = document.getElementById('analysis-timestamp');
-                    
-                    // 移除之前的状态类
-                    analysisDiv.classList.remove('danger-text', 'safe-text');
-                    
-                    if (data.description && data.description.text) {
-                        // 解析返回的数据（可能是字符串或对象）
-                        let analysisData;
-                        if (typeof data.description.text === 'string') {
-                            try {
-                                analysisData = JSON.parse(data.description.text);
-                            } catch (e) {
-                                // 如果不是JSON格式，构造一个对象
-                                analysisData = {
-                                    description: data.description.text,
-                                    danger: null,
-                                    date: data.description.timestamp
-                                };
-                            }
-                        } else {
-                            analysisData = data.description.text;
+            // 首先获取光照度数据，然后获取分析数据
+            Promise.all([
+                fetch('/latest_lux_data').then(response => response.json()),
+                fetch('/latest_description').then(response => response.json())
+            ])
+            .then(([luxData, analysisData]) => {
+                const analysisDiv = document.getElementById('latest-analysis');
+                const timestampDiv = document.getElementById('analysis-timestamp');
+                
+                // 移除之前的状态类
+                analysisDiv.classList.remove('danger-text', 'safe-text');
+                
+                // 检查光照度是否低于50
+                let isLuxDangerous = false;
+                if (luxData.lux_data && luxData.lux_data.lux !== undefined) {
+                    isLuxDangerous = luxData.lux_data.lux < 50;
+                }
+                
+                if (analysisData.description && analysisData.description.text) {
+                    // 解析返回的数据（可能是字符串或对象）
+                    let parsedAnalysisData;
+                    if (typeof analysisData.description.text === 'string') {
+                        try {
+                            parsedAnalysisData = JSON.parse(analysisData.description.text);
+                        } catch (e) {
+                            // 如果不是JSON格式，构造一个对象
+                            parsedAnalysisData = {
+                                description: analysisData.description.text,
+                                danger: null,
+                                date: analysisData.description.timestamp
+                            };
                         }
-                        
-                        // 显示描述信息
-                        analysisDiv.textContent = analysisData.description || 'No description available';
-                        
-                        // 根据危险性更新样式
-                        if (analysisData.danger === true) {
-                            analysisDiv.classList.add('danger-text');
-                        } else if (analysisData.danger === false) {
-                            analysisDiv.classList.add('safe-text');
-                        }
-                        
-                        // 更新危险指示器
-                        updateDangerIndicator(analysisData.danger);
-                        
-                        // 显示时间戳
-                        const timestamp = analysisData.date || data.description.timestamp;
-                        timestampDiv.textContent = timestamp ? 
-                            `Analyzed at: ${timestamp}` : '';
-                        
-                        // 更新状态
-                        mainStatus.textContent = 'Connected';
-                        mainStatus.className = 'status connected';
+                    } else {
+                        parsedAnalysisData = analysisData.description.text;
+                    }
+                    
+                    // 如果光照度低于50，覆盖VLM的分析结果
+                    let finalDanger = parsedAnalysisData.danger;
+                    let finalDescription = parsedAnalysisData.description || 'No description available';
+                    let displayStatus = null;
+                    
+                    if (isLuxDangerous) {
+                        // 光照度危险（红色）
+                        finalDanger = true;
+                        displayStatus = 'danger';
+                        finalDescription = 'DANGER: Low light conditions detected (below 50 lux). ' + finalDescription;
+                    } else if (parsedAnalysisData.danger === true) {
+                        // VLM检测到威胁（黄色）
+                        displayStatus = 'threat';
+                    } else if (parsedAnalysisData.danger === false) {
+                        // 安全状态（绿色）
+                        displayStatus = 'safe';
+                    }
+                    
+                    // 显示描述信息
+                    analysisDiv.textContent = finalDescription;
+                    
+                    // 根据危险性更新样式（光照度优先级更高）
+                    if (isLuxDangerous) {
+                        analysisDiv.classList.add('danger-text');
+                    } else if (parsedAnalysisData.danger === true) {
+                        // VLM检测到威胁，使用黄色文本
+                        analysisDiv.classList.add('threat-text');
+                    } else if (parsedAnalysisData.danger === false) {
+                        analysisDiv.classList.add('safe-text');
+                    }
+                    
+                    // 更新危险指示器（光照度优先级更高）
+                    updateDangerIndicator(displayStatus);
+                    
+                    // 显示时间戳
+                    const timestamp = parsedAnalysisData.date || analysisData.description.timestamp;
+                    timestampDiv.textContent = timestamp ? 
+                        `Analyzed at: ${timestamp}` : '';
+                    
+                    // 更新状态
+                    mainStatus.textContent = 'Connected';
+                    mainStatus.className = 'status connected';
+                } else {
+                    // 即使没有分析数据，如果光照度低于50，也要显示危险状态
+                    let displayStatus = null;
+                    if (isLuxDangerous) {
+                        analysisDiv.textContent = 'DANGER: Low light conditions detected (below 50 lux).';
+                        analysisDiv.classList.add('danger-text');
+                        displayStatus = 'danger';
                     } else {
                         analysisDiv.textContent = 'No analysis received yet. Please start the video streamer.';
                         analysisDiv.classList.remove('danger-text', 'safe-text');
-                        timestampDiv.textContent = '';
-                        updateDangerIndicator(null);
+                        displayStatus = null;
                     }
-                    
-                    updateLastUpdated();
-                    
-                    // 更新分析帧图像
-                    analysisFrameImg.src = '/analysis_frame_image?' + new Date().getTime();
-                })
-                .catch(error => {
-                    console.error('Error loading latest analysis:', error);
+                    updateDangerIndicator(displayStatus);
+                    timestampDiv.textContent = '';
                     
                     // 更新状态
-                    mainStatus.textContent = 'Analysis Disconnected';
-                    mainStatus.className = 'status disconnected';
-                });
+                    mainStatus.textContent = 'Connected';
+                    mainStatus.className = 'status connected';
+                }
+                
+                updateLastUpdated();
+                
+                // 更新分析帧图像
+                analysisFrameImg.src = '/analysis_frame_image?' + new Date().getTime();
+            })
+            .catch(error => {
+                console.error('Error loading latest analysis:', error);
+                
+                // 更新状态
+                mainStatus.textContent = 'Analysis Disconnected';
+                mainStatus.className = 'status disconnected';
+            });
         }
         
         // 加载所有分析相关数据

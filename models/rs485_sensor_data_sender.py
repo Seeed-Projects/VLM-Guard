@@ -25,7 +25,7 @@ logger = logging.getLogger("RS485SensorDataSender")
 class RS485SensorDataSender:
     """RS485传感器数据发送器类"""
     
-    def __init__(self, sensor_reader: RS485Controller, host: str = 'localhost', port: int = 5002):
+    def __init__(self, sensor_reader: RS485Controller, host: str = 'localhost', port: int = 5000):
         """
         初始化RS485传感器数据发送器
         
