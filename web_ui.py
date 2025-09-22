@@ -156,29 +156,36 @@ class UnifiedReceiver:
                 elif packet_type == "vllm_response":
                     # 处理vLLM响应
                     vllm_response = packet.get("data")
+                    logger.info(f"Received vllm_response: {vllm_response}")
                     if vllm_response is not None:
                         desc_count += 1
-                        # 对于vLLM响应，我们直接使用返回的时间戳
+                        
+                        # 直接使用vllm_response作为分析数据
+                        analysis_data = vllm_response
+                        frame_data = None  # 不从这个数据包中获取帧数据
+                        
+                        # 对于新的JSON格式，我们直接使用返回的时间戳
                         # 如果没有时间戳，则使用当前时间
-                        if isinstance(vllm_response, dict) and 'date' in vllm_response:
-                            timestamp = vllm_response['date']
+                        if isinstance(analysis_data, dict) and 'date' in analysis_data:
+                            timestamp = analysis_data['date']
                         else:
                             timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                         
                         # 更新最新描述
                         with self.description_lock:
                             self.latest_description = {
-                                'text': vllm_response,
+                                'text': analysis_data,
                                 'timestamp': timestamp
                             }
+                        logger.info(f"Updated latest_description: {self.latest_description}")
                         
                         # 打印vLLM响应信息
-                        if isinstance(vllm_response, dict):
+                        if isinstance(analysis_data, dict):
                             logger.info(f"[VLLM RESPONSE {desc_count} from {addr} at {timestamp}]")
-                            logger.info(f"  Response: {vllm_response.get('description', 'N/A')}")
-                            logger.info(f"  Danger: {vllm_response.get('danger', 'N/A')}")
+                            logger.info(f"  Response: {analysis_data.get('description', 'N/A')}")
+                            logger.info(f"  Danger: {analysis_data.get('danger', 'N/A')}")
                         else:
-                            logger.info(f"[VLLM RESPONSE {desc_count} from {addr} at {timestamp}] {vllm_response}")
+                            logger.info(f"[VLLM RESPONSE {desc_count} from {addr} at {timestamp}] {analysis_data}")
                             
                 elif packet_type == "sensor_data":
                     # 处理传感器数据
@@ -308,12 +315,7 @@ def latest_description():
 @app.route('/latest_analysis_frame')
 def latest_analysis_frame():
     """获取最新分析帧的路由"""
-    if unified_receiver:
-        frame_data = unified_receiver.get_latest_analysis_frame()
-        if frame_data:
-            return jsonify({'frame': frame_data})
-        else:
-            return jsonify({'frame': None})
+    # 我们不再通过这个路由发送分析帧数据，因为帧数据会通过视频流单独发送
     return jsonify({'frame': None})
 
 
@@ -353,7 +355,20 @@ def analysis_frame_image():
 def chat():
     """与vLLM对话的路由"""
     try:
-        data = request.json
+        # 检查Content-Type
+        content_type = request.headers.get('Content-Type', '')
+        logger.debug(f"Chat request Content-Type: {content_type}")
+        
+        # 尝试获取JSON数据
+        try:
+            data = request.json
+            if data is None:
+                logger.error("Failed to parse JSON data from request")
+                return jsonify({'error': 'Invalid JSON data'}), 400
+        except Exception as e:
+            logger.error(f"Error parsing JSON data: {e}")
+            return jsonify({'error': f'Error parsing JSON data: {e}'}), 400
+            
         user_message = data.get('message', '')
         
         # 从数据库获取最近的20条分析记录作为上下文

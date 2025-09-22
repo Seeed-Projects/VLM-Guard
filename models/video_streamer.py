@@ -389,8 +389,11 @@ Please provide an accurate and helpful answer based on the historical data. If t
                     is_dangerous = description.get("danger", False)
                     self.rs485_sensor_data_sender.handle_vllm_danger_result(is_dangerous)
                 
-                # 发送完整的分析结果到UI（包括描述、危险标志和时间戳）
+                # 发送完整的分析结果到UI（不包含图像数据）
                 self.send_frame_via_udp(description, frame_type="vllm_response")
+                
+                # 同时发送当前帧作为视频帧
+                self.send_frame_via_udp(frame, frame_type="video")
                 
         finally:
             # 无论成功与否，都标记分析完成

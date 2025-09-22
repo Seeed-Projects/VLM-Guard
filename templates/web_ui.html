@@ -822,6 +822,7 @@
                 fetch('/latest_description').then(response => response.json())
             ])
             .then(([luxData, analysisData]) => {
+                console.log('Received analysis data:', analysisData);
                 const analysisDiv = document.getElementById('latest-analysis');
                 const timestampDiv = document.getElementById('analysis-timestamp');
                 
