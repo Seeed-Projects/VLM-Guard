@@ -505,6 +505,11 @@
             background-color: #ffeb3b;
             color: black;
         }
+        
+        .countdown-timer {
+            font-weight: bold;
+            margin-left: 10px;
+        }
     </style>
 </head>
 <body>
@@ -554,6 +559,7 @@
                 <div class="panel analysis-panel">
                     <h2>Current Frame Analysis 
                         <span id="danger-indicator" class="danger-indicator" style="display: none;"></span>
+                        <span id="countdown-timer" class="countdown-timer" style="float: right; font-size: 0.9rem; color: #666;"></span>
                     </h2>
                     <div class="panel-content">
                         <div class="frame-container">
@@ -601,6 +607,9 @@
         let refreshIntervalId = null;
         let resizeTimeout = null;
         let latestLuxData = null; // 存储最新的光照度数据
+        let countdownIntervalId = null; // 倒计时定时器ID
+        let lastAnalysisTime = null; // 上次分析时间
+        let analysisInterval = 10; // 分析间隔（秒），默认10秒
         
         // 获取DOM元素
         const videoImg = document.getElementById('video-stream');
@@ -619,6 +628,55 @@
         function updateLastUpdated() {
             lastUpdateTime = new Date();
             lastUpdated.textContent = `Last updated: ${lastUpdateTime.toLocaleTimeString()}`;
+        }
+        
+        // 更新倒计时显示
+        function updateCountdown() {
+            const countdownElement = document.getElementById('countdown-timer');
+            if (!lastAnalysisTime) {
+                countdownElement.textContent = '';
+                return;
+            }
+            
+            const now = new Date();
+            const timeDiff = now.getTime() - lastAnalysisTime.getTime();
+            const elapsedSeconds = Math.floor(timeDiff / 1000);
+            const remainingSeconds = Math.max(0, analysisInterval - elapsedSeconds);
+            
+            if (remainingSeconds <= 0) {
+                // 倒计时结束
+                countdownElement.textContent = 'Analyzing...';
+            } else {
+                // 显示剩余秒数
+                countdownElement.textContent = `${remainingSeconds}s`;
+            }
+        }
+        
+        // 启动倒计时（从分析间隔开始倒数）
+        function startCountdownFromInterval() {
+            // 重置倒计时为分析间隔时间
+            let remainingSeconds = analysisInterval;
+            const countdownElement = document.getElementById('countdown-timer');
+            countdownElement.textContent = `${remainingSeconds}s`;
+            
+            // 如果已有倒计时定时器，先清除它
+            if (countdownIntervalId) {
+                clearInterval(countdownIntervalId);
+            }
+            
+            // 启动新的倒计时
+            countdownIntervalId = setInterval(function() {
+                remainingSeconds--;
+                if (remainingSeconds <= 0) {
+                    // 倒计时结束，显示Analyzing...
+                    countdownElement.textContent = 'Analyzing...';
+                    clearInterval(countdownIntervalId);
+                    countdownIntervalId = null;
+                } else {
+                    // 更新显示
+                    countdownElement.textContent = `${remainingSeconds}s`;
+                }
+            }, 1000);
         }
         
         // 获取并更新光照度数据
@@ -853,6 +911,20 @@
                         parsedAnalysisData = analysisData.description.text;
                     }
                     
+                    // 如果有分析时间戳，启动倒计时（只在真正收到新分析结果时）
+                    if (parsedAnalysisData.date) {
+                        // 检查是否是新的分析结果（与上次不同）
+                        const currentTime = new Date(parsedAnalysisData.date).getTime();
+                        const lastTime = lastAnalysisTime ? lastAnalysisTime.getTime() : 0;
+                        
+                        if (currentTime > lastTime) {
+                            // 更新最后分析时间
+                            lastAnalysisTime = new Date(parsedAnalysisData.date);
+                            // 启动倒计时
+                            startCountdownFromInterval();
+                        }
+                    }
+                    
                     // 如果光照度低于50，覆盖VLM的分析结果
                     let finalDanger = parsedAnalysisData.danger;
                     let finalDescription = parsedAnalysisData.description || 'No description available';
@@ -956,6 +1028,9 @@
             
             // 启动自动刷新（每2秒）
             refreshIntervalId = setInterval(loadAllAnalysisData, 2000);
+            
+            // 启动初始倒计时
+            startCountdownFromInterval();
             
             // 监听聊天发送按钮
             sendButton.addEventListener('click', sendChatMessage);
