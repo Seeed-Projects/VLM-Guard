@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>VLM-Guard</title>
+    <title>Security Agent via VLM</title>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
@@ -515,7 +515,7 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1 class="main-title">VLM-Guard</h1>
+            <h1 class="main-title">Security Agent via VLM</h1>
             <div class="status-info">
                 <div class="status" id="main-status">
                     <span id="status-text">Connecting...</span>
@@ -579,18 +579,18 @@
             <div class="column">
                 <!-- 聊天 -->
                 <div class="panel chat-panel">
-                    <h2>Chat with Database</h2>
+                    <h2>Security Assistant Chat</h2>
                     <div class="panel-content">
                         <div class="chat-container">
                             <div id="chat-messages" class="chat-messages">
                                 <div class="message bot-message">
-                                    <div class="message-sender">Database Assistant</div>
-                                    <div class="message-content">Hello! I'm the database assistant. You can ask me questions about the video analysis.</div>
+                                    <div class="message-sender">Security Assistant</div>
+                                    <div class="message-content">Hello! I'm the security assistant. You can ask me questions about the video analysis.</div>
                                 </div>
                             </div>
                             <div class="chat-input-container">
                                 <div class="chat-input-wrapper">
-                                    <input type="text" id="chat-input" placeholder="Message Database..." />
+                                    <input type="text" id="chat-input" placeholder="Message Security Assistant..." />
                                     <button id="send-button">Send</button>
                                 </div>
                             </div>
@@ -815,7 +815,7 @@
             
             const senderDiv = document.createElement('div');
             senderDiv.className = 'message-sender';
-            senderDiv.textContent = isUser ? 'You' : 'Database Assistant';
+            senderDiv.textContent = isUser ? 'You' : 'Security Assistant';
             
             const contentDiv = document.createElement('div');
             contentDiv.className = 'message-content';
