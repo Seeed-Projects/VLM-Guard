@@ -1,6 +1,11 @@
 #!/bin/bash
 # 启动脚本 - 同时启动视频流传输器和可视化功能
 
+# 激活虚拟环境
+if [ -d ".venv" ]; then
+    source .venv/bin/activate
+fi
+
 # 设置默认参数
 PORT=${PORT:-5000}
 HOST=${HOST:-localhost}

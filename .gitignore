@@ -171,3 +171,4 @@ ENV/
 # Cache directories
 .cache/
 pytest_cache/
+*.jpg

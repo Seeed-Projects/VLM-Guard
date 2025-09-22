@@ -526,7 +526,7 @@
                 
                 <!-- 光照度传感器数据 -->
                 <div class="panel chart-panel">
-                    <h2>Light Sensor</h2>
+                    <h2>Light Sensor(below 50 lux light turn red)</h2>
                     <div class="panel-content">
                         <div class="chart-container">
                             <canvas id="lux-chart" width="400" height="200" style="max-width: 100%; height: auto;"></canvas>
@@ -655,6 +655,10 @@
             const proportion = Math.min(lux / maxLux, 1);
             const angle = proportion * Math.PI; // 半圆（180度）
             
+            // 确定颜色：低于50时为红色，否则为蓝色
+            const chartColor = lux < 50 ? '#f44336' : '#4a9bff'; // 红色或蓝色
+            const textColor = lux < 50 ? '#f44336' : '#4caf50'; // 红色或绿色
+            
             // 绘制背景半圆（灰色）
             ctx.beginPath();
             ctx.arc(centerX, centerY, radius, Math.PI, 2 * Math.PI);
@@ -662,12 +666,11 @@
             ctx.lineWidth = 25;
             ctx.stroke();
             
-            // 绘制数据半圆（统一颜色，无变化）
+            // 绘制数据半圆（根据lux值改变颜色）
             if (angle > 0) {
                 ctx.beginPath();
                 ctx.arc(centerX, centerY, radius, Math.PI, Math.PI + angle);
-                // 固定颜色，不随光照度变化
-                ctx.strokeStyle = '#4a9bff'; // 统一的蓝色
+                ctx.strokeStyle = chartColor; // 根据lux值改变颜色
                 ctx.lineWidth = 25;
                 ctx.stroke();
             }
@@ -698,8 +701,8 @@
             ctx.fillStyle = '#2c3e50';
             ctx.fill();
             
-            // 在半扇形上方绘制lux值（绿色字体）
-            ctx.fillStyle = '#4caf50'; // 绿色
+            // 在半扇形上方绘制lux值（根据lux值改变颜色）
+            ctx.fillStyle = textColor; // 根据lux值改变颜色
             ctx.font = 'bold 18px Arial';
             ctx.textAlign = 'center';
             ctx.fillText(`${lux} Lux`, centerX, centerY - radius - 20);
