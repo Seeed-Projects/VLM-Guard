@@ -1,4 +1,4 @@
-# VLM Demo System
+# VLM Guard
 
 This system demonstrates real-time video streaming with dangerous action detection using Vision-Language Models, and RS485 device control.
 
