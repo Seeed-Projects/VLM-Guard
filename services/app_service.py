@@ -6,19 +6,24 @@
 """
 
 import logging
+import sys
+import os
 from typing import Optional
 
-from models.video_streamer import VideoStreamer
-from models.rs485_controller import RS485Controller
-from models.rs485_sensor_data_sender import RS485SensorDataSender
+# 添加项目根目录到Python路径
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+# 现在可以正确导入core模块中的类
+from core.video_streamer import VideoStreamer
+from core.rs485_controller import RS485Controller
+from core.rs485_sensor_data_sender import RS485SensorDataSender
 from services.config import AppConfig
 
+# 导入日志工具
+from utils.logger import setup_logger
+
 # 设置日志
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger("AppService")
+logger = setup_logger("AppService")
 
 
 class AppService:

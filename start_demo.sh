@@ -124,7 +124,7 @@ echo "Starting VLM Demo System..."
 
 # 启动Web UI (从指定端口接收数据，在指定Web端口显示UI)
 echo "Starting Web UI..."
-python3 web_ui.py --port $PORT --host $HOST --web-port $WEB_PORT --chart-port $CHART_PORT &
+PYTHONPATH=/home/jiahao/VLM-Guard python3 -m apps.web_ui --port $PORT --host $HOST --web-port $WEB_PORT --chart-port $CHART_PORT &
 WEB_UI_PID=$!
 
 # 等待几秒确保Web UI启动
@@ -140,7 +140,7 @@ fi
 echo "Starting main application..."
 if [ "$ENABLE_RS485" = true ]; then
     echo "Starting with direct RS485 support..."
-    python3 app.py \
+    PYTHONPATH=/home/jiahao/VLM-Guard python3 -m apps.video_analyzer \
         --enable-rs485-direct \
         --rs485-port $RS485_PORT \
         --rs485-baud $RS485_BAUD \
@@ -154,7 +154,7 @@ if [ "$ENABLE_RS485" = true ]; then
         --vllm-url $VLLM_URL &
 else
     echo "Starting without RS485 support..."
-    python3 app.py \
+    PYTHONPATH=/home/jiahao/VLM-Guard python3 -m apps.video_analyzer \
         --port $PORT \
         --host $HOST \
         --description-interval $DESCRIPTION_INTERVAL \

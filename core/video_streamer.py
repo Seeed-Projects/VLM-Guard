@@ -28,12 +28,11 @@ from .database import AnalysisRecord, get_db
 
 from .rs485_sensor_data_sender import RS485SensorDataSender
 
+# 导入日志工具
+from utils.logger import setup_logger
+
 # 设置日志
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger("VideoStreamer")
+logger = setup_logger("VideoStreamer")
 
 
 class VideoStreamer:

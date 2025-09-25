@@ -14,12 +14,11 @@ from typing import Optional
 
 from .rs485_controller import RS485Controller
 
+# 导入日志工具
+from utils.logger import setup_logger
+
 # 设置日志
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger("RS485SensorDataSender")
+logger = setup_logger("RS485SensorDataSender")
 
 
 class RS485SensorDataSender:

@@ -19,10 +19,10 @@ import os
 import logging
 
 # 导入数据可视化接收器
-from models.data_visualizer_receiver import DataVisualizerReceiver
+from core.data_visualizer_receiver import DataVisualizerReceiver
 
 # 导入数据库相关模块
-from models.database import AnalysisRecord, ChatRecord, get_db
+from core.database import AnalysisRecord, ChatRecord, get_db
 
 # 设置日志
 logging.basicConfig(

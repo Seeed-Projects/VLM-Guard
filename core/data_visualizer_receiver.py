@@ -10,12 +10,11 @@ import threading
 import json
 import logging
 
+# 导入日志工具
+from utils.logger import setup_logger
+
 # 设置日志
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger("DataVisualizerReceiver")
+logger = setup_logger("DataVisualizerReceiver")
 
 
 class DataVisualizerReceiver:
